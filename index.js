@@ -24,11 +24,48 @@ app.use(session({
     cookie: { maxAge: 600000 } // 10 minutes
 }));
 
+// UI Helper: Render Monolithic Response
+function renderStatus(title, message, isError = false, subMessage = '') {
+    return `
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${title} | SXS</title>
+        <link rel="stylesheet" href="/style.css">
+    </head>
+    <body>
+        <div class="overlay"></div>
+        <main class="container">
+            <section class="auth-box" style="border-color: ${isError ? '#ff3333' : '#1a1a1a'};">
+                <div class="status-indicator">
+                    <span class="dot" style="background-color: ${isError ? '#ff3333' : '#00ff00'}; box-shadow: 0 0 8px ${isError ? '#ff3333' : '#00ff00'};"></span>
+                    <span class="status-text">${isError ? 'SYSTEM ERROR' : 'PROCESS COMPLETE'}</span>
+                </div>
+                <h1 class="logo" style="font-size: 2rem; color: ${isError ? '#ff3333' : '#ffffff'};">${title}</h1>
+                <p class="description" style="color: #fff;">${message}</p>
+                ${subMessage ? `<p style="font-size: 10px; color: #444; margin-top: -1rem; margin-bottom: 2rem;">${subMessage}</p>` : ''}
+                <div class="actions">
+                    <a href="/" class="btn-primary">
+                        <span class="btn-text">RETURN TO GATE</span>
+                    </a>
+                </div>
+            </section>
+        </main>
+    </body>
+    </html>`;
+}
+
 // Route: Get New CAPTCHA
 app.get('/api/captcha', (req, res) => {
-    const { image, text } = generateCaptcha();
-    req.session.captcha = text;
-    res.json({ image });
+    try {
+        const { image, text } = generateCaptcha();
+        req.session.captcha = text;
+        res.json({ image });
+    } catch (e) {
+        res.status(500).json({ error: 'Captcha generation failed' });
+    }
 });
 
 // 1. Redirect to Discord OAuth2
@@ -36,11 +73,10 @@ app.get('/auth/discord', (req, res) => {
     const userCaptcha = req.query.captcha;
     const sessionCaptcha = req.session.captcha;
 
-    if (!userCaptcha || userCaptcha.toUpperCase() !== sessionCaptcha) {
-        return res.status(403).send('Invalid CAPTCHA. Please try again.');
+    if (!userCaptcha || !sessionCaptcha || userCaptcha.toUpperCase() !== sessionCaptcha.toUpperCase()) {
+        return res.status(403).send(renderStatus('FORBIDDEN', 'CAPTCHA認証に失敗しました。正しい文字を入力してください。', true));
     }
 
-    // Clear captcha so it can't be reused
     req.session.captcha = null;
     req.session.verified = true;
 
@@ -52,8 +88,13 @@ app.get('/auth/discord', (req, res) => {
 app.get('/auth/callback', async (req, res) => {
     const code = req.query.code;
     
-    if (!code) return res.status(400).send('Verification failed: No code provided.');
-    if (!req.session.verified) return res.status(403).send('Session expired or security check failed.');
+    if (!code) {
+        return res.status(400).send(renderStatus('MISSING CODE', '認証コードが提供されませんでした。最初からやり直してください。', true));
+    }
+    
+    if (!req.session.verified) {
+        return res.status(403).send(renderStatus('SESSION EXPIRED', 'セッションの有効期限が切れたか、不正なアクセスです。もう一度やり直してください。', true));
+    }
 
     try {
         // Exchange code for Access Token
@@ -80,9 +121,8 @@ app.get('/auth/callback', async (req, res) => {
         const username = userResponse.data.username;
         const isVerified = userResponse.data.verified;
 
-        // Anti-Bot Checks
         if (!isVerified) {
-            return res.status(403).send('Discord email verification required.');
+            return res.status(403).send(renderStatus('VERIFICATION REQUIRED', 'Discordのメール認証が済んでいないアカウントは参加できません。', true));
         }
 
         // 3. Add user to server
@@ -96,39 +136,18 @@ app.get('/auth/callback', async (req, res) => {
                 }
             });
             
-            // Clear verification
             req.session.verified = false;
-
-            // Success Page
-            res.send(`
-                <!DOCTYPE html>
-                <html lang="ja">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>ACCESS GRANTED | SXS</title>
-                    <link rel="stylesheet" href="/style.css">
-                </head>
-                <body>
-                    <div class="overlay"></div>
-                    <main class="container">
-                        <section class="auth-box" style="text-align: center;">
-                            <h1 class="logo" style="font-size: 2rem; color: #00ff00;">GRANTED</h1>
-                            <p class="description">認証が完了しました。${username} として参加しました。</p>
-                            <a href="https://discord.com/channels/${GUILD_ID}" class="btn-primary">OPEN DISCORD</a>
-                        </section>
-                    </main>
-                </body>
-                </html>
-            `);
+            res.send(renderStatus('ACCESS GRANTED', `${username} として参加が完了しました。<br>SXSサーバーへよう注目ください。`, false, `USER_ID: ${userId}`));
+            
         } catch (error) {
             console.error('Add Member Error:', error.response ? error.response.data : error.message);
-            res.status(500).send('Failed to add you to the server.');
+            res.status(500).send(renderStatus('JOIN FAILED', 'サーバーへの参加処理中にエラーが発生しました。Botの権限を確認してください。', true, error.message));
         }
 
     } catch (error) {
-        console.error('Auth Error:', error.response ? error.response.data : error.message);
-        res.status(500).send('Authentication failed.');
+        const errorData = error.response ? JSON.stringify(error.response.data) : error.message;
+        console.error('Auth Error:', errorData);
+        res.status(500).send(renderStatus('AUTH FAILED', 'Discordとの認証連携に失敗しました。設定値（Client ID/Secret/Redirect URI）を確認してください。', true, `DEBUG: ${errorData}`));
     }
 });
 
