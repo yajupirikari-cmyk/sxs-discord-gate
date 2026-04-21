@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
     <div class="overlay"></div>
@@ -25,14 +24,22 @@
             </div>
             
             <div class="content">
-                <h2 class="title">SERVER VERIFICATION</h2>
-                <p class="description">Discord OAuth2を介して、SXSサーバーへの自動参加と認証を完了します。続行するには以下のボタンをクリックしてください。</p>
+                <h2 class="title" style="margin-bottom: 0.5rem;">HUMAN VERIFICATION</h2>
+                <p class="description">以下の文字を入力して認証を完了してください。</p>
+                
+                <div class="captcha-wrapper">
+                    <div class="captcha-image-container">
+                        <img id="captcha-img" src="" alt="Captcha">
+                        <button type="button" class="refresh-btn" onclick="refreshCaptcha()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path></svg>
+                        </button>
+                    </div>
+                    <input type="text" id="captcha-input" placeholder="ENTER CODE" maxlength="6" autocomplete="off">
+                </div>
             </div>
             
             <div class="actions">
-                <div id="captcha-container" class="cf-turnstile" data-sitekey="YOUR_TURNSTILE_SITE_KEY" data-theme="dark" data-callback="onCaptchaSuccess"></div>
-                <br>
-                <a href="#" id="join-btn" class="btn-primary disabled" onclick="startAuth(event)">
+                <a href="#" id="join-btn" class="btn-primary" onclick="startAuth(event)">
                     <span class="btn-text">AUTHORIZE ACCESS</span>
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M5 12h14M12 5l7 7-7 7"/>
@@ -46,33 +53,28 @@
             <div class="meta">
                 <span>SECURED CONNECTION</span>
                 <span class="separator">/</span>
-                <span>ENC-256</span>
+                <span>NON-BOT VALIDATED</span>
             </div>
         </footer>
     </main>
 
     <script>
-        let captchaToken = null;
-
-        function onCaptchaSuccess(token) {
-            captchaToken = token;
-            const btn = document.getElementById('join-btn');
-            btn.classList.remove('disabled');
-            console.log('Verification Complete');
+        async function refreshCaptcha() {
+            const res = await fetch('/api/captcha');
+            const data = await res.json();
+            document.getElementById('captcha-img').src = data.image;
+            document.getElementById('captcha-input').value = '';
         }
 
         function startAuth(event) {
             event.preventDefault();
-            if (!captchaToken) return;
+            const captcha = document.getElementById('captcha-input').value;
+            if (!captcha) return alert('CAPTCHAを入力してください。');
             
-            // Redirect to auth with captcha token in query or session
-            // For simplicity, we'll just redirect. The backend should ideally verify it later.
-            window.location.href = `/auth/discord?cf_token=${captchaToken}`;
+            window.location.href = `/auth/discord?captcha=${captcha}`;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('SXS Gateway Initialized');
-        });
+        document.addEventListener('DOMContentLoaded', refreshCaptcha);
     </script>
 </body>
 </html>
