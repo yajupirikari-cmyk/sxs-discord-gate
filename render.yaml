@@ -6,16 +6,9 @@ services:
     startCommand: node index.js
     envVars:
       - key: DISCORD_CLIENT_ID
-        sync: false
       - key: DISCORD_CLIENT_SECRET
-        sync: false
       - key: DISCORD_BOT_TOKEN
-        sync: false
       - key: DISCORD_GUILD_ID
-        sync: false
       - key: REDIRECT_URI
-        sync: false
-      - key: TURNSTILE_SITE_KEY
-        sync: false
-      - key: TURNSTILE_SECRET_KEY
-        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
