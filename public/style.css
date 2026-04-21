@@ -228,6 +228,14 @@ body::before {
     transform: translateX(5px);
 }
 
+.privacy-note {
+    font-size: 9px;
+    color: #444;
+    margin-top: 1.5rem;
+    line-height: 1.4;
+    text-align: justify;
+}
+
 .footer {
     margin-top: 3rem;
     display: flex;
