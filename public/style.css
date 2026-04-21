@@ -143,6 +143,12 @@ body::before {
     cursor: pointer;
 }
 
+.btn-primary.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
 .btn-primary:hover {
     background: transparent;
     color: var(--text-primary);

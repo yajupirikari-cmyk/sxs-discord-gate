@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
     <div class="overlay"></div>
@@ -29,7 +30,9 @@
             </div>
             
             <div class="actions">
-                <a href="/auth/discord" class="btn-primary">
+                <div id="captcha-container" class="cf-turnstile" data-sitekey="YOUR_TURNSTILE_SITE_KEY" data-theme="dark" data-callback="onCaptchaSuccess"></div>
+                <br>
+                <a href="#" id="join-btn" class="btn-primary disabled" onclick="startAuth(event)">
                     <span class="btn-text">AUTHORIZE ACCESS</span>
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M5 12h14M12 5l7 7-7 7"/>
@@ -49,7 +52,24 @@
     </main>
 
     <script>
-        // Subtle glitch effect or initialization
+        let captchaToken = null;
+
+        function onCaptchaSuccess(token) {
+            captchaToken = token;
+            const btn = document.getElementById('join-btn');
+            btn.classList.remove('disabled');
+            console.log('Verification Complete');
+        }
+
+        function startAuth(event) {
+            event.preventDefault();
+            if (!captchaToken) return;
+            
+            // Redirect to auth with captcha token in query or session
+            // For simplicity, we'll just redirect. The backend should ideally verify it later.
+            window.location.href = `/auth/discord?cf_token=${captchaToken}`;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             console.log('SXS Gateway Initialized');
         });
