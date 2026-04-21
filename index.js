@@ -14,11 +14,6 @@ const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY;
 
-// Helper: Get account creation date from Discord ID (Snowflake)
-function getCreationDate(id) {
-    return new Date(Number(BigInt(id) >> 22n) + 1420070400000);
-}
-
 app.use(express.static('public'));
 app.use(express.json());
 
@@ -76,18 +71,11 @@ app.get('/auth/callback', async (req, res) => {
         const userId = userResponse.data.id;
         const username = userResponse.data.username;
         const isVerified = userResponse.data.verified;
-        const creationDate = getCreationDate(userId);
-        const accountAgeDays = (Date.now() - creationDate.getTime()) / (1000 * 60 * 60 * 24);
 
         // C. Anti-Bot / Anti-Joiner Checks
         // 1. Must have verified email
         if (!isVerified) {
             return res.status(403).send('<h1>Access Denied</h1><p>Discordアカウントのメール認証が必要です。</p>');
-        }
-
-        // 2. Account must be at least 7 days old
-        if (accountAgeDays < 7) {
-            return res.status(403).send('<h1>Access Denied</h1><p>アカウントが新しすぎます。作成から7日以上経過したアカウントのみ参加可能です。</p>');
         }
 
         // 3. Add user to server
