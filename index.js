@@ -99,15 +99,17 @@ app.get('/auth/callback', async (req, res) => {
     try {
         // Exchange code for Access Token
         const params = new URLSearchParams({
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
             grant_type: 'authorization_code',
             code: code,
             redirect_uri: REDIRECT_URI,
         });
 
+        const authHeader = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
         const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${authHeader}`
+            }
         });
 
         const accessToken = tokenResponse.data.access_token;
